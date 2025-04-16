@@ -3,6 +3,7 @@ import sys
 import requests
 import tkinter as tk
 from tkinter import messagebox, colorchooser
+import json
 from updater import check_for_update
 
 # Проверка обновлений
@@ -13,6 +14,9 @@ root = tk.Tk()
 root.title("Legion Nexus Webhook Edition")
 root.geometry("900x900")
 root.minsize(700, 700)
+
+# Путь к файлу с данными
+data_file = "webhook_data.json"
 
 def resource_path(relative_path):
     """Получить абсолютный путь к ресурсу, работает и в .exe, и в .py"""
@@ -85,14 +89,6 @@ def attach_context_menu(widget):
 
     # Включаем горячие клавиши
     enable_copy_paste(widget)
-
-# === Контекстное меню ===
-def show_context_menu(event, widget):
-    context_menu = tk.Menu(root, tearoff=0, bg=theme_entry, fg=theme_fg)
-    context_menu.add_command(label="Вырезать", command=lambda: widget.event_generate("<<Cut>>"))
-    context_menu.add_command(label="Копировать", command=lambda: widget.event_generate("<<Copy>>"))
-    context_menu.add_command(label="Вставить", command=lambda: widget.event_generate("<<Paste>>"))
-    context_menu.tk_popup(event.x_root, event.y_root)
 
 # === Отправка webhook ===
 def send_webhook():
@@ -247,5 +243,21 @@ add_button.pack(side="left", padx=20)
 # Зеленая кнопка "Отправить"
 send_button = tk.Button(button_frame, text="Отправить", command=send_webhook, bg="#28a745", fg="white", height=2, bd=0)
 send_button.pack(side="right", padx=20)
+
+# Кнопка очистки
+def clear_fields():
+    url_entry.delete(0, tk.END)
+    username_entry.delete(0, tk.END)
+    avatar_entry.delete(0, tk.END)
+    content_text.delete("1.0", tk.END)
+    for embed_data in embed_entries:
+        for key, entry in embed_data.items():
+            if isinstance(entry, tk.Entry):
+                entry.delete(0, tk.END)
+            elif isinstance(entry, tk.Text):
+                entry.delete("1.0", tk.END)
+
+clear_button = tk.Button(button_frame, text="Очистить", command=clear_fields, bg="red", fg="white", height=2, bd=0)
+clear_button.pack(side="left", padx=20)
 
 root.mainloop()
