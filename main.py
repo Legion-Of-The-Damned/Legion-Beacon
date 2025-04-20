@@ -6,27 +6,22 @@ from tkinter import messagebox, colorchooser
 import json
 from updater import check_for_update
 
-# Проверка обновлений
 check_for_update()
 
-# Основной интерфейс
 root = tk.Tk()
 root.title("Legion Nexus Webhook Edition")
 root.geometry("900x900")
 root.minsize(700, 700)
 
-# Путь к файлу с данными
 data_file = "webhook_data.json"
 
 def resource_path(relative_path):
-    """Получить абсолютный путь к ресурсу, работает и в .exe, и в .py"""
     try:
-        base_path = sys._MEIPASS  # PyInstaller временная папка
+        base_path = sys._MEIPASS
     except Exception:
         base_path = os.path.abspath(".")
     return os.path.join(base_path, relative_path)
 
-# Путь к иконке
 icon_path = resource_path("icon.ico")
 if os.path.exists(icon_path):
     root.iconbitmap(icon_path)
@@ -87,15 +82,18 @@ def attach_context_menu(widget):
         menu.tk_popup(event.x_root, event.y_root)
     widget.bind("<Button-3>", show_menu)
 
-    # Включаем горячие клавиши
     enable_copy_paste(widget)
 
-# === Отправка webhook ===
 def send_webhook():
     url = url_entry.get().strip()
     username = username_entry.get().strip()
     avatar_url = avatar_entry.get().strip()
     content = content_text.get("1.0", "end").strip()
+    role_ids = [rid.strip() for rid in role_entry.get().split(",") if rid.strip().isdigit()]
+    mention_text = " ".join([f"<@&{rid}>" for rid in role_ids])
+
+    if mention_text:
+        content = f"{mention_text}\n{content}" if content else mention_text
 
     if not url:
         messagebox.showerror("Ошибка", "Пожалуйста, введите Webhook URL.")
@@ -105,6 +103,9 @@ def send_webhook():
         "username": username if username else None,
         "avatar_url": avatar_url if avatar_url else None,
         "content": content if content else None,
+        "allowed_mentions": {
+            "roles": role_ids
+        },
         "embeds": []
     }
 
@@ -145,16 +146,14 @@ def send_webhook():
     except Exception as e:
         messagebox.showerror("Ошибка", f"Произошла ошибка: {str(e)}")
 
-# === Выбор цвета ===
 def choose_color(embed_data):
     color = colorchooser.askcolor(initialcolor=embed_data["color"].get())[1]
     if color:
         embed_data["color"].delete(0, tk.END)
         embed_data["color"].insert(0, color)
 
-# === Добавление Embed ===
 def add_embed():
-    frame = tk.LabelFrame(scrollable_frame, text=f"Embed {len(embed_entries)+1}", padx=5, pady=5, bg=theme_bg, fg=theme_fg)
+    frame = tk.LabelFrame(scrollable_frame, text=f"Вебхук {len(embed_entries)+1}", padx=5, pady=5, bg=theme_bg, fg=theme_fg)
     frame.pack(padx=10, pady=5, fill="x")
     embed_data = {}
 
@@ -163,12 +162,10 @@ def add_embed():
         lbl.grid(row=row, column=0, sticky="w")
         return lbl
 
-    # Кнопка удаления блока
     def remove_embed():
         embed_entries.remove(embed_data)
         frame.destroy()
 
-    # Кнопка "крестик" справа
     delete_btn = tk.Button(frame, text="❌", command=remove_embed, bg=theme_bg, fg="red", bd=0)
     delete_btn.grid(row=0, column=2, sticky="ne", padx=5)
 
@@ -188,9 +185,8 @@ def add_embed():
     embed_data["color"].grid(row=2, column=1, columnspan=2, sticky="w", padx=5)
     attach_context_menu(embed_data["color"])
 
-    # Кнопка выбора цвета (размещаем её рядом с полем ввода цвета)
     choose_color_btn = tk.Button(frame, text="Выбрать цвет", command=lambda: choose_color(embed_data), bg=theme_button, fg="white", bd=0)
-    choose_color_btn.grid(row=2, column=2, padx=5, sticky="w")  # Размещаем кнопку в том же ряду, рядом с полем
+    choose_color_btn.grid(row=2, column=2, padx=5, sticky="w")
 
     styled_label("URL изображения:", 3)
     embed_data["image"] = tk.Entry(frame, bg=theme_entry, fg=theme_fg, bd=0)
@@ -210,7 +206,6 @@ def add_embed():
     frame.grid_columnconfigure(1, weight=1)
     embed_entries.append(embed_data)
 
-# === Основные поля ===
 def styled_label(text):
     return tk.Label(scrollable_frame, text=text, bg=theme_bg, fg=theme_fg)
 
@@ -229,6 +224,11 @@ avatar_entry = tk.Entry(scrollable_frame, bg=theme_entry, fg=theme_fg, bd=0)
 avatar_entry.pack(fill="x", padx=10)
 attach_context_menu(avatar_entry)
 
+styled_label("ID ролей (через запятую):").pack(anchor="w")
+role_entry = tk.Entry(scrollable_frame, bg=theme_entry, fg=theme_fg, bd=0)
+role_entry.pack(fill="x", padx=10)
+attach_context_menu(role_entry)
+
 styled_label("Обычное сообщение:").pack(anchor="w")
 content_text = tk.Text(scrollable_frame, height=3, bg=theme_entry, fg=theme_fg, bd=0, wrap="word")
 content_text.pack(fill="x", padx=10)
@@ -237,19 +237,30 @@ attach_context_menu(content_text)
 button_frame = tk.Frame(scrollable_frame, bg=theme_bg)
 button_frame.pack(side="bottom", fill="x", pady=20)
 
-add_button = tk.Button(button_frame, text="Добавить Embed", command=add_embed, bg=theme_entry, fg=theme_fg, bd=0)
-add_button.pack(side="left", padx=20)
+add_button = tk.Button(
+    button_frame,
+    text="➕",
+    command=add_embed,
+    fg="#28a745",
+    bg=theme_bg,
+    activebackground=theme_bg,
+    activeforeground="#28a745",
+    bd=0,
+    font=("Arial", 16),
+    highlightthickness=0,
+    cursor="hand2"
+)
+add_button.pack(side="left", padx=10)
 
-# Зеленая кнопка "Отправить"
 send_button = tk.Button(button_frame, text="Отправить", command=send_webhook, bg="#28a745", fg="white", height=2, bd=0)
 send_button.pack(side="right", padx=20)
 
-# Кнопка очистки
 def clear_fields():
     url_entry.delete(0, tk.END)
     username_entry.delete(0, tk.END)
     avatar_entry.delete(0, tk.END)
     content_text.delete("1.0", tk.END)
+    role_entry.delete(0, tk.END)
     for embed_data in embed_entries:
         for key, entry in embed_data.items():
             if isinstance(entry, tk.Entry):
