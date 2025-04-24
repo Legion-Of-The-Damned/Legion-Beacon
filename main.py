@@ -1,12 +1,9 @@
 import os
 import sys
+import json
 import requests
 import tkinter as tk
 from tkinter import messagebox, colorchooser
-import json
-from updater import check_for_update
-
-check_for_update()
 
 root = tk.Tk()
 root.title("Legion Nexus Webhook Edition")
@@ -117,6 +114,8 @@ def send_webhook():
         image_url = embed_data["image"].get().strip()
         thumb_url = embed_data["thumb"].get().strip()
         url_link = embed_data["url"].get().strip()
+        footer_text = embed_data["footer_text"].get().strip()
+        footer_icon = embed_data["footer_icon"].get().strip()
 
         if title:
             embed["title"] = title
@@ -133,6 +132,10 @@ def send_webhook():
             embed["image"] = {"url": image_url}
         if thumb_url:
             embed["thumbnail"] = {"url": thumb_url}
+        if footer_text:
+            embed["footer"] = {"text": footer_text}
+            if footer_icon:
+                embed["footer"]["icon_url"] = footer_icon
 
         if embed:
             payload["embeds"].append(embed)
@@ -203,6 +206,16 @@ def add_embed():
     embed_data["url"].grid(row=5, column=1, columnspan=2, sticky="we", padx=5)
     attach_context_menu(embed_data["url"])
 
+    styled_label("Текст футера:", 6)
+    embed_data["footer_text"] = tk.Entry(frame, bg=theme_entry, fg=theme_fg, bd=0)
+    embed_data["footer_text"].grid(row=6, column=1, columnspan=2, sticky="we", padx=5)
+    attach_context_menu(embed_data["footer_text"])
+
+    styled_label("URL иконки футера:", 7)
+    embed_data["footer_icon"] = tk.Entry(frame, bg=theme_entry, fg=theme_fg, bd=0)
+    embed_data["footer_icon"].grid(row=7, column=1, columnspan=2, sticky="we", padx=5)
+    attach_context_menu(embed_data["footer_icon"])
+
     frame.grid_columnconfigure(1, weight=1)
     embed_entries.append(embed_data)
 
@@ -210,9 +223,19 @@ def styled_label(text):
     return tk.Label(scrollable_frame, text=text, bg=theme_bg, fg=theme_fg)
 
 styled_label("Вебхук URL:").pack(anchor="w")
-url_entry = tk.Entry(scrollable_frame, bg=theme_entry, fg=theme_fg, bd=0)
-url_entry.pack(fill="x", padx=10)
+
+url_frame = tk.Frame(scrollable_frame, bg=theme_bg)
+url_frame.pack(fill="x", padx=10)
+
+url_entry = tk.Entry(url_frame, bg=theme_entry, fg=theme_fg, bd=0)
+url_entry.pack(side="left", fill="x", expand=True)
 attach_context_menu(url_entry)
+
+send_button = tk.Button(url_frame, text="Отправить", command=send_webhook, bg="#28a745", fg="white", height=1, bd=0)
+send_button.pack(side="right", padx=(10, 0))
+
+separator = tk.Frame(scrollable_frame, bg="#3b5c76", height=2)
+separator.pack(fill="x", padx=10, pady=10)
 
 styled_label("Имя пользователя:").pack(anchor="w")
 username_entry = tk.Entry(scrollable_frame, bg=theme_entry, fg=theme_fg, bd=0)
@@ -251,9 +274,6 @@ add_button = tk.Button(
     cursor="hand2"
 )
 add_button.pack(side="left", padx=10)
-
-send_button = tk.Button(button_frame, text="Отправить", command=send_webhook, bg="#28a745", fg="white", height=2, bd=0)
-send_button.pack(side="right", padx=20)
 
 def clear_fields():
     url_entry.delete(0, tk.END)
