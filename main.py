@@ -3,7 +3,7 @@ import sys
 import json
 import requests
 import tkinter as tk
-from tkinter import messagebox, colorchooser
+from tkinter import messagebox, simpledialog, colorchooser
 
 root = tk.Tk()
 root.title("Legion Nexus Webhook Edition")
@@ -45,6 +45,49 @@ scrollable_window = canvas.create_window((0, 0), window=scrollable_frame, anchor
 canvas.pack(side="left", fill="both", expand=True)
 scrollbar.pack(side="right", fill="y")
 
+presets_file = "presets.json"
+
+def load_presets():
+    if os.path.exists(presets_file):
+        with open(presets_file, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {}
+
+def save_presets(presets):
+    with open(presets_file, "w", encoding="utf-8") as f:
+        json.dump(presets, f, ensure_ascii=False, indent=4)
+
+def save_preset():
+    name = simpledialog.askstring("Сохранить пресет", "Введите имя пресета:")
+    if name:
+        presets = load_presets()
+        presets[name] = content_text.get("1.0", "end").strip()
+        save_presets(presets)
+        messagebox.showinfo("Сохранено", f"Пресет '{name}' сохранён.")
+
+def load_preset():
+    presets = load_presets()
+    if not presets:
+        messagebox.showinfo("Нет пресетов", "Сохранённых пресетов пока нет.")
+        return
+    name = simpledialog.askstring("Загрузить пресет", f"Введите имя пресета:\nДоступные: {', '.join(presets)}")
+    if name in presets:
+        content_text.delete("1.0", "end")
+        content_text.insert("1.0", presets[name])
+        messagebox.showinfo("Загружено", f"Пресет '{name}' загружен.")
+    else:
+        messagebox.showwarning("Не найдено", f"Пресет '{name}' не найден.")
+
+# Найди этот блок в коде и ДОБАВЬ после content_text.pack:
+preset_buttons_frame = tk.Frame(scrollable_frame, bg=theme_bg)  # NEW
+preset_buttons_frame.pack(padx=10, pady=(5, 10), anchor="w")  # NEW
+
+save_preset_btn = tk.Button(preset_buttons_frame, text="💾 Сохранить пресет", command=save_preset, bg=theme_button, fg="white", bd=0)  # NEW
+save_preset_btn.pack(side="left", padx=(0, 5))  # NEW
+
+load_preset_btn = tk.Button(preset_buttons_frame, text="📂 Загрузить пресет", command=load_preset, bg=theme_button, fg="white", bd=0)  # NEW
+load_preset_btn.pack(side="left")  # NEW
+
 def resize_canvas(event):
     canvas.itemconfig(scrollable_window, width=event.width)
 
@@ -80,6 +123,30 @@ def attach_context_menu(widget):
     widget.bind("<Button-3>", show_menu)
 
     enable_copy_paste(widget)
+
+def clear_all_fields():
+    # Очистить текстовые поля
+    content_text.delete("1.0", "end")
+    username_entry.delete(0, "end")
+    avatar_entry.delete(0, "end")
+    role_entry.delete(0, "end")
+    
+    # Очистить все embed-данные
+    for embed_data in embed_entries:
+        embed_data["title"].delete(0, "end")
+        embed_data["description"].delete("1.0", "end")
+        embed_data["color"].delete(0, "end")
+        embed_data["image"].delete(0, "end")
+        embed_data["thumb"].delete(0, "end")
+        embed_data["url"].delete(0, "end")
+        embed_data["footer_text"].delete(0, "end")
+        embed_data["footer_icon"].delete(0, "end")
+    
+    messagebox.showinfo("Очистка", "Все поля были очищены.")
+
+# Добавить кнопку "Очистить" рядом с "Загрузить пресет"
+clear_button = tk.Button(preset_buttons_frame, text="🧹 Очистить", command=clear_all_fields, bg=theme_button, fg="white", bd=0)
+clear_button.pack(side="left", padx=(5, 0))
 
 def send_webhook():
     url = url_entry.get().strip()
@@ -247,48 +314,17 @@ avatar_entry = tk.Entry(scrollable_frame, bg=theme_entry, fg=theme_fg, bd=0)
 avatar_entry.pack(fill="x", padx=10)
 attach_context_menu(avatar_entry)
 
-styled_label("ID ролей (через запятую):").pack(anchor="w")
+styled_label("ID ролей для упоминания (через запятую):").pack(anchor="w")
 role_entry = tk.Entry(scrollable_frame, bg=theme_entry, fg=theme_fg, bd=0)
 role_entry.pack(fill="x", padx=10)
 attach_context_menu(role_entry)
 
-styled_label("Обычное сообщение:").pack(anchor="w")
-content_text = tk.Text(scrollable_frame, height=3, bg=theme_entry, fg=theme_fg, bd=0, wrap="word")
+styled_label("Текст сообщения:").pack(anchor="w")
+content_text = tk.Text(scrollable_frame, height=5, wrap="word", bg=theme_entry, fg=theme_fg, bd=0)
 content_text.pack(fill="x", padx=10)
 attach_context_menu(content_text)
 
-button_frame = tk.Frame(scrollable_frame, bg=theme_bg)
-button_frame.pack(side="bottom", fill="x", pady=20)
-
-add_button = tk.Button(
-    button_frame,
-    text="➕",
-    command=add_embed,
-    fg="#28a745",
-    bg=theme_bg,
-    activebackground=theme_bg,
-    activeforeground="#28a745",
-    bd=0,
-    font=("Arial", 16),
-    highlightthickness=0,
-    cursor="hand2"
-)
-add_button.pack(side="left", padx=10)
-
-def clear_fields():
-    url_entry.delete(0, tk.END)
-    username_entry.delete(0, tk.END)
-    avatar_entry.delete(0, tk.END)
-    content_text.delete("1.0", tk.END)
-    role_entry.delete(0, tk.END)
-    for embed_data in embed_entries:
-        for key, entry in embed_data.items():
-            if isinstance(entry, tk.Entry):
-                entry.delete(0, tk.END)
-            elif isinstance(entry, tk.Text):
-                entry.delete("1.0", tk.END)
-
-clear_button = tk.Button(button_frame, text="Очистить", command=clear_fields, bg="red", fg="white", height=2, bd=0)
-clear_button.pack(side="left", padx=20)
+add_embed_btn = tk.Button(scrollable_frame, text="Добавить Embed", command=add_embed, bg=theme_button, fg="white", bd=0)
+add_embed_btn.pack(padx=10, pady=(5, 10))
 
 root.mainloop()
